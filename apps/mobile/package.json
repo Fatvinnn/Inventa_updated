@@ -1,0 +1,39 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "expo start --host lan",
+    "start": "expo start --host lan",
+    "tunnel": "expo start --tunnel",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "expo build",
+    "lint": "eslint .",
+    "clean": "rm -rf .expo node_modules .turbo"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-navigation/bottom-tabs": "^6.6.1",
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/native-stack": "^6.11.0",
+    "axios": "^1.7.9",
+    "expo": "~54.0.21",
+    "expo-linear-gradient": "15.0.7",
+    "expo-status-bar": "~3.0.8",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-linear-gradient": "2.8.3",
+    "react-native-paper": "5.14.5",
+    "react-native-safe-area-context": "5.6.2",
+    "react-native-screens": "4.16.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.1.17",
+    "eslint": "^8.57.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Inventa Mobile",
+    "slug": "inventa-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#2196F3"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.inventa.mobile"
+    },
+    "android": {
+      "package": "com.inventa.mobile"
+    },
+    "plugins": []
+  }
+}
