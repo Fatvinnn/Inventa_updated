@@ -31,12 +31,15 @@ export interface User {
   program: string;
   totalBorrowings: number;
   activeBorrowings: number;
+  role: 'admin' | 'user';
 }
 
 export type RootStackParamList = {
   MainTabs: undefined;
   ItemDetail: { item: Item };
   BorrowForm: { item: Item };
+  AddItem: undefined;
+  EditItem?: { item: Item };
 };
 
 export type MainTabParamList = {
@@ -44,4 +47,11 @@ export type MainTabParamList = {
   Items: undefined;
   MyBorrowings: undefined;
   Profile: undefined;
+};
+
+export type AdminTabParamList = {
+  Dashboard: undefined;
+  ManageItems: undefined;
+  ManageBorrowings: undefined;
+  AdminProfile: undefined;
 };

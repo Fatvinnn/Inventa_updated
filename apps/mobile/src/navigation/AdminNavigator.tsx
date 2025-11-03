@@ -4,36 +4,37 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  HomeScreen,
-  ItemsScreen,
-  ItemDetailScreen,
-  MyBorrowingsScreen,
+  AdminDashboardScreen,
+  ManageItemsScreen,
+  ManageBorrowingsScreen,
   ProfileScreen,
+  ItemDetailScreen,
+  AddItemScreen,
 } from '../screens';
-import { RootStackParamList, MainTabParamList } from '../types';
+import { RootStackParamList, AdminTabParamList } from '../types';
 import { COLORS } from '../constants/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Tab = createBottomTabNavigator<AdminTabParamList>();
 
-interface AppNavigatorProps {
+interface AdminNavigatorProps {
   onLogout?: () => void;
 }
 
-function MainTabs({ onLogout }: { onLogout?: () => void }) {
+function AdminTabs({ onLogout }: { onLogout?: () => void }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Items') {
+          if (route.name === 'Dashboard') {
             iconName = focused ? 'grid' : 'grid-outline';
-          } else if (route.name === 'MyBorrowings') {
+          } else if (route.name === 'ManageItems') {
+            iconName = focused ? 'cube' : 'cube-outline';
+          } else if (route.name === 'ManageBorrowings') {
             iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Profile') {
+          } else if (route.name === 'AdminProfile') {
             iconName = focused ? 'person' : 'person-outline';
           }
 
@@ -59,31 +60,31 @@ function MainTabs({ onLogout }: { onLogout?: () => void }) {
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: 'Beranda', headerTitle: 'Inventa' }}
+        name="Dashboard"
+        component={AdminDashboardScreen}
+        options={{ title: 'Dashboard', headerTitle: 'Admin Dashboard' }}
       />
       <Tab.Screen
-        name="Items"
-        component={ItemsScreen}
-        options={{ title: 'Barang', headerTitle: 'Daftar Barang' }}
+        name="ManageItems"
+        component={ManageItemsScreen}
+        options={{ title: 'Barang', headerTitle: 'Kelola Barang' }}
       />
       <Tab.Screen
-        name="MyBorrowings"
-        component={MyBorrowingsScreen}
-        options={{ title: 'Peminjaman', headerTitle: 'Peminjaman Saya' }}
+        name="ManageBorrowings"
+        component={ManageBorrowingsScreen}
+        options={{ title: 'Peminjaman', headerTitle: 'Kelola Peminjaman' }}
       />
       <Tab.Screen
-        name="Profile"
+        name="AdminProfile"
         component={ProfileScreen}
-        options={{ title: 'Profil', headerTitle: 'Profil Saya' }}
+        options={{ title: 'Profil', headerTitle: 'Profil Admin' }}
         initialParams={{ onLogout } as any}
       />
     </Tab.Navigator>
   );
 }
 
-export function AppNavigator({ onLogout }: AppNavigatorProps) {
+export function AdminNavigator({ onLogout }: AdminNavigatorProps) {
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -101,12 +102,17 @@ export function AppNavigator({ onLogout }: AppNavigatorProps) {
           name="MainTabs"
           options={{ headerShown: false }}
         >
-          {() => <MainTabs onLogout={onLogout} />}
+          {() => <AdminTabs onLogout={onLogout} />}
         </Stack.Screen>
         <Stack.Screen
           name="ItemDetail"
           component={ItemDetailScreen}
           options={{ title: 'Detail Barang' }}
+        />
+        <Stack.Screen
+          name="AddItem"
+          component={AddItemScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

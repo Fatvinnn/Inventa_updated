@@ -130,8 +130,22 @@ export const MOCK_USER: User = {
   nim: '2021010001',
   email: 'ahmad.widiyanto@student.ac.id',
   phone: '+62 812-3456-7890',
-  faculty: 'Fakultas Teknik',
-  program: 'Teknik Informatika',
+  // faculty: 'Fakultas Teknik',
+  // program: 'Teknik Informatika',
   totalBorrowings: 12,
   activeBorrowings: 2,
+  role: 'user',
+};
+
+export const MOCK_ADMIN: User = {
+  id: 'a1',
+  name: 'Dr. Budi Santoso',
+  nim: 'ADM001',
+  email: 'budi.santoso@admin.ac.id',
+  phone: '+62 811-2233-4455',
+  // faculty: 'Staff Admin',
+  // program: 'Administrator',
+  totalBorrowings: 0,
+  activeBorrowings: 0,
+  role: 'admin',
 };

@@ -65,7 +65,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Menu Cepat</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Menu Cepat</Text>
+          </View>
           <View style={styles.quickActions}>
             <TouchableOpacity 
               style={styles.actionCard}

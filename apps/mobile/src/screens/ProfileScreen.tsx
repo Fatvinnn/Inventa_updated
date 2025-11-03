@@ -1,17 +1,41 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MOCK_USER } from '../data/mockData';
+import { useRoute } from '@react-navigation/native';
+import { MOCK_ADMIN } from '../data/mockData';
 import { COLORS, SIZES } from '../constants/theme';
 
 export const ProfileScreen: React.FC = () => {
+  const route = useRoute();
+  const { onLogout } = (route.params as any) || {};
+
   const menuItems = [
     { icon: 'person-outline', title: 'Edit Profil', subtitle: 'Ubah informasi profil' },
     { icon: 'lock-closed-outline', title: 'Ganti Password', subtitle: 'Keamanan akun' },
-    { icon: 'notifications-outline', title: 'Notifikasi', subtitle: 'Pengaturan notifikasi' },
-    { icon: 'help-circle-outline', title: 'Bantuan', subtitle: 'Pusat bantuan' },
   ];
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Keluar',
+      'Apakah Anda yakin ingin keluar dari aplikasi?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: () => {
+            if (onLogout) {
+              onLogout();
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -29,15 +53,15 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.onlineBadge} />
           </View>
-          <Text style={styles.name}>{MOCK_USER.name}</Text>
-          <Text style={styles.email}>{MOCK_USER.email}</Text>
+          <Text style={styles.name}>{MOCK_ADMIN.name}</Text>
+          <Text style={styles.email}>{MOCK_ADMIN.email}</Text>
         </LinearGradient>
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
-            <Text style={styles.statNumber}>{MOCK_USER.totalBorrowings}</Text>
+            <Text style={styles.statNumber}>{MOCK_ADMIN.totalBorrowings}</Text>
             <Text style={styles.statLabel}>Total Pinjaman</Text>
           </View>
 
@@ -45,7 +69,7 @@ export const ProfileScreen: React.FC = () => {
 
           <View style={styles.statCard}>
             <Ionicons name="time-outline" size={24} color={COLORS.warning} />
-            <Text style={styles.statNumber}>{MOCK_USER.activeBorrowings}</Text>
+            <Text style={styles.statNumber}>{MOCK_ADMIN.activeBorrowings}</Text>
             <Text style={styles.statLabel}>Sedang Dipinjam</Text>
           </View>
         </View>
@@ -67,7 +91,7 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>

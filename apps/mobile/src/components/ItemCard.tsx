@@ -69,7 +69,6 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
                 Total: {item.total} unit
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
           </View>
         </View>
       </View>
