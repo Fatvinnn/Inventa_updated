@@ -108,7 +108,7 @@ export const createBorrowing = asyncHandler(async (req: AuthRequest, res: Respon
 
   // Create borrowing and update item availability in a transaction
   const result = await prisma.$transaction(async (tx) => {
-    // Create borrowing
+    // Create borrowing with PENDING status (needs admin approval)
     const borrowing = await tx.borrowing.create({
       data: {
         userId: req.user!.userId,
@@ -116,7 +116,7 @@ export const createBorrowing = asyncHandler(async (req: AuthRequest, res: Respon
         quantity,
         returnDate: new Date(returnDate),
         notes,
-        status: 'ACTIVE',
+        status: 'PENDING', // Changed from ACTIVE to PENDING
       },
       include: {
         item: {
@@ -131,22 +131,11 @@ export const createBorrowing = asyncHandler(async (req: AuthRequest, res: Respon
       },
     });
 
-    // Update item availability
-    await tx.item.update({
-      where: { id: itemId },
-      data: {
-        available: {
-          decrement: quantity,
-        },
-      },
-    });
-
     // Update user stats
     await tx.user.update({
       where: { id: req.user!.userId },
       data: {
         totalBorrowings: { increment: 1 },
-        activeBorrowings: { increment: 1 },
       },
     });
 
@@ -155,7 +144,7 @@ export const createBorrowing = asyncHandler(async (req: AuthRequest, res: Respon
 
   res.status(201).json({
     success: true,
-    message: 'Peminjaman berhasil dibuat',
+    message: 'Peminjaman berhasil diajukan. Menunggu persetujuan admin.',
     data: result,
   });
 });
@@ -185,8 +174,29 @@ export const updateBorrowingStatus = asyncHandler(async (req: AuthRequest, res: 
       status: status as BorrowingStatus,
     };
 
+    // If APPROVING a pending borrowing, deduct stock
+    if (status === 'APPROVED' && existingBorrowing.status === 'PENDING') {
+      // Deduct item stock
+      await tx.item.update({
+        where: { id: existingBorrowing.itemId },
+        data: {
+          available: {
+            decrement: existingBorrowing.quantity,
+          },
+        },
+      });
+
+      // Update user stats
+      await tx.user.update({
+        where: { id: existingBorrowing.userId },
+        data: {
+          activeBorrowings: { increment: 1 },
+        },
+      });
+    }
+
     // If returning item, set actual return date and restore stock
-    if (status === 'RETURNED' && existingBorrowing.status !== 'RETURNED') {
+    if (status === 'RETURNED' && (existingBorrowing.status === 'APPROVED' || existingBorrowing.status === 'OVERDUE')) {
       updateData.actualReturnDate = new Date();
 
       // Return item stock
@@ -252,7 +262,7 @@ export const checkOverdueBorrowings = asyncHandler(async (req: AuthRequest, res:
   // Update all active borrowings that are past return date
   const result = await prisma.borrowing.updateMany({
     where: {
-      status: 'ACTIVE',
+      status: 'APPROVED', // Changed from ACTIVE to APPROVED
       returnDate: {
         lt: today,
       },
@@ -275,9 +285,11 @@ export const checkOverdueBorrowings = asyncHandler(async (req: AuthRequest, res:
 // @route   GET /api/borrowings/stats
 // @access  Private (Admin only)
 export const getBorrowingStats = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const [total, active, overdue, returned] = await Promise.all([
+  const [total, pending, approved, rejected, overdue, returned] = await Promise.all([
     prisma.borrowing.count(),
-    prisma.borrowing.count({ where: { status: 'ACTIVE' } }),
+    prisma.borrowing.count({ where: { status: 'PENDING' } }),
+    prisma.borrowing.count({ where: { status: 'APPROVED' } }),
+    prisma.borrowing.count({ where: { status: 'REJECTED' } }),
     prisma.borrowing.count({ where: { status: 'OVERDUE' } }),
     prisma.borrowing.count({ where: { status: 'RETURNED' } }),
   ]);
@@ -286,7 +298,9 @@ export const getBorrowingStats = asyncHandler(async (req: AuthRequest, res: Resp
     success: true,
     data: {
       total,
-      active,
+      pending,
+      approved,
+      rejected,
       overdue,
       returned,
     },

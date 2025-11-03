@@ -85,7 +85,7 @@ model Borrowing {
   borrowDate        DateTime        @default(now()) @map("borrow_date") @db.Date
   returnDate        DateTime        @map("return_date") @db.Date
   actualReturnDate  DateTime?       @map("actual_return_date") @db.Date
-  status            BorrowingStatus @default(ACTIVE)
+  status            BorrowingStatus @default(PENDING)
   notes             String?
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -102,9 +102,11 @@ model Borrowing {
 }
 
 enum BorrowingStatus {
-  ACTIVE
-  RETURNED
-  OVERDUE
+  PENDING   // Menunggu persetujuan admin
+  APPROVED  // Disetujui, sedang dipinjam
+  REJECTED  // Ditolak admin
+  RETURNED  // Sudah dikembalikan
+  OVERDUE   // Terlambat dikembalikan
 }
 
 // ============================================

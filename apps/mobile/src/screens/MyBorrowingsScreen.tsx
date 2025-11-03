@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { BorrowingCard } from '../components';
 import { Borrowing } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
 import { borrowingService, handleApiError } from '../services';
 
-type FilterType = 'all' | 'APPROVED' | 'RETURNED';
+type FilterType = 'all' | 'PENDING' | 'APPROVED' | 'RETURNED' | 'REJECTED';
 
 export const MyBorrowingsScreen: React.FC = () => {
   const [filter, setFilter] = useState<FilterType>('all');
@@ -42,7 +42,31 @@ export const MyBorrowingsScreen: React.FC = () => {
     fetchBorrowings();
   };
 
+  const handleCancelBorrowing = async (borrowingId: string, itemName: string) => {
+    Alert.alert(
+      'Batalkan Peminjaman',
+      `Apakah Anda yakin ingin membatalkan peminjaman "${itemName}"?`,
+      [
+        { text: 'Tidak', style: 'cancel' },
+        {
+          text: 'Ya, Batalkan',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await borrowingService.cancelBorrowing(borrowingId);
+              Alert.alert('Berhasil', 'Peminjaman berhasil dibatalkan');
+              fetchBorrowings();
+            } catch (err) {
+              Alert.alert('Error', handleApiError(err));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const activeBorrowings = borrowings.filter(b => b.status === 'APPROVED').length;
+  const pendingBorrowings = borrowings.filter(b => b.status === 'PENDING').length;
 
   const renderEmpty = () => {
     if (isLoading) {
@@ -75,18 +99,6 @@ export const MyBorrowingsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{activeBorrowings}</Text>
-          <Text style={styles.statLabel}>Sedang Dipinjam</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{borrowings.length}</Text>
-          <Text style={styles.statLabel}>Total Peminjaman</Text>
-        </View>
-      </View>
-
       {/* Filter */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
@@ -95,6 +107,14 @@ export const MyBorrowingsScreen: React.FC = () => {
         >
           <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
             Semua
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'PENDING' && styles.filterButtonActive]}
+          onPress={() => setFilter('PENDING')}
+        >
+          <Text style={[styles.filterText, filter === 'PENDING' && styles.filterTextActive]}>
+            Pending
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -119,7 +139,21 @@ export const MyBorrowingsScreen: React.FC = () => {
       <FlatList
         data={borrowings}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BorrowingCard borrowing={item} />}
+        renderItem={({ item }) => (
+          <View>
+            <BorrowingCard borrowing={item} />
+            {item.status === 'PENDING' && (
+              <View style={styles.actionContainer}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => handleCancelBorrowing(item.id, item.item?.name || 'Item')}
+                >
+                  <Text style={styles.cancelButtonText}>Batalkan Peminjaman</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
         contentContainerStyle={borrowings.length === 0 ? styles.emptyList : styles.list}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
@@ -139,29 +173,30 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     padding: SIZES.md,
-    gap: SIZES.md,
+    gap: SIZES.sm,
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.white,
-    padding: SIZES.lg,
+    padding: SIZES.md,
     borderRadius: 12,
     alignItems: 'center',
   },
   statNumber: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.primary,
     marginBottom: SIZES.xs,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: SIZES.md,
+    paddingTop: SIZES.md,
     marginBottom: SIZES.md,
     gap: SIZES.sm,
   },
@@ -216,5 +251,22 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: 14,
     color: COLORS.textSecondary,
+  },
+  actionContainer: {
+    paddingHorizontal: SIZES.md + SIZES.md,
+    marginTop: -SIZES.sm,
+    marginBottom: SIZES.sm,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.error,
+    paddingVertical: 12,
+    paddingHorizontal: SIZES.md,
+    borderRadius: SIZES.radiusSm,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });

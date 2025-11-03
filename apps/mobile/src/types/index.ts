@@ -4,16 +4,18 @@ export interface Item {
   name: string;
   description: string | null;
   category: string;
-  categoryId: string;
-  quantity: number;
-  availableQuantity: number;
-  condition: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-  status: 'AVAILABLE' | 'BORROWED' | 'MAINTENANCE' | 'RETIRED';
-  location: string | null;
-  imageUrl: string | null;
+  image: string | null; // emoji or URL
+  available: number;
+  total: number;
+  condition: 'BAIK' | 'CUKUP' | 'RUSAK';
+  location: string;
+  createdById: string | null;
   createdAt: string;
   updatedAt: string;
-  borrowCount?: number;
+  createdBy?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface Borrowing {

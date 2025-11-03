@@ -23,7 +23,7 @@ const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
 };
 
 export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
-  const hasAvailable = item.availableQuantity > 0 && item.status === 'AVAILABLE';
+  const hasAvailable = item.available > 0;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
@@ -45,7 +45,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
             <View style={[styles.statusBadge, hasAvailable ? styles.availableBadge : styles.unavailableBadge]}>
               <View style={[styles.statusDot, hasAvailable && styles.availableDot]} />
               <Text style={[styles.statusText, hasAvailable && styles.availableText]}>
-                {hasAvailable ? `${item.availableQuantity} Tersedia` : 'Habis'}
+                {hasAvailable ? `${item.available} Tersedia` : 'Habis'}
               </Text>
             </View>
           </View>
@@ -55,20 +55,18 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onPress }) => {
             <Text style={styles.category}>{item.category}</Text>
           </View>
 
-          {item.location && (
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={styles.location} numberOfLines={1}>
-                {item.location}
-              </Text>
-            </View>
-          )}
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.location} numberOfLines={1}>
+              {item.location}
+            </Text>
+          </View>
 
           <View style={styles.footer}>
             <View style={styles.quantityContainer}>
               <Ionicons name="layers-outline" size={16} color={COLORS.primary} />
               <Text style={styles.quantity}>
-                Total: {item.quantity} unit
+                Total: {item.total} unit
               </Text>
             </View>
           </View>

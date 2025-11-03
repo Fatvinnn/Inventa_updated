@@ -29,11 +29,6 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  const menuItems = [
-    { icon: 'person-outline', title: 'Edit Profil', subtitle: 'Ubah informasi profil' },
-    { icon: 'lock-closed-outline', title: 'Ganti Password', subtitle: 'Keamanan akun' },
-  ];
-
   const handleLogout = () => {
     Alert.alert(
       'Keluar',
@@ -99,22 +94,6 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
         )}
-
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity key={index} style={styles.menuItem} activeOpacity={0.7}>
-              <View style={styles.menuIconContainer}>
-                <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={24} color={COLORS.primary} />
-              </View>
-              <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
-            </TouchableOpacity>
-          ))}
-        </View>
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={handleLogout}>

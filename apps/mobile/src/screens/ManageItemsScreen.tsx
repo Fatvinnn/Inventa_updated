@@ -57,7 +57,7 @@ export const ManageItemsScreen: React.FC = () => {
 
   const handleEditItem = (item: Item) => {
     setSelectedItem(item);
-    setEditedTotal(item.quantity.toString());
+    setEditedTotal(item.total.toString());
     setEditModalVisible(true);
   };
 
@@ -76,7 +76,7 @@ export const ManageItemsScreen: React.FC = () => {
     }
 
     try {
-      await itemService.updateItem(selectedItem.id, { quantity: newTotal });
+      await itemService.updateItem(selectedItem.id, { total: newTotal });
       Alert.alert('Berhasil', `Total unit ${selectedItem.name} berhasil diubah menjadi ${newTotal}`);
       setEditModalVisible(false);
       setSelectedItem(null);
@@ -215,7 +215,7 @@ export const ManageItemsScreen: React.FC = () => {
                   placeholderTextColor={COLORS.textSecondary}
                 />
                 <Text style={styles.helperText}>
-                  Unit tersedia saat ini: {selectedItem?.availableQuantity}
+                  Unit tersedia saat ini: {selectedItem?.available}
                 </Text>
               </View>
             </View>

@@ -182,7 +182,7 @@ export const deleteItem = asyncHandler(async (req: AuthRequest, res: Response) =
     include: {
       borrowings: {
         where: {
-          status: { in: ['ACTIVE', 'OVERDUE'] },
+          status: { in: ['APPROVED', 'OVERDUE'] },
         },
       },
     },

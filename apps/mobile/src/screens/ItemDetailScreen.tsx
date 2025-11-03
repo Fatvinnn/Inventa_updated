@@ -7,19 +7,24 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
+import { borrowingService, handleApiError } from '../services';
 
 type ItemDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'ItemDetail'>;
 
 export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navigation }) => {
   const { item } = route.params;
   const [quantity, setQuantity] = useState('1');
+  const [returnDate, setReturnDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleBorrow = () => {
-    if (item.availableQuantity === 0 || item.status !== 'AVAILABLE') {
+  const handleBorrow = async () => {
+    if (item.available === 0) {
       Alert.alert('Tidak Tersedia', 'Maaf, barang ini sedang tidak tersedia.');
       return;
     }
@@ -30,21 +35,48 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       return;
     }
 
-    if (qty > item.availableQuantity) {
-      Alert.alert('Invalid', `Hanya tersedia ${item.availableQuantity} unit`);
+    if (qty > item.available) {
+      Alert.alert('Invalid', `Hanya tersedia ${item.available} unit`);
       return;
     }
 
+    // Set default return date (7 days from now) if not set
+    const defaultReturnDate = new Date();
+    defaultReturnDate.setDate(defaultReturnDate.getDate() + 7);
+
     Alert.alert(
       'Konfirmasi Peminjaman',
-      `Pinjam ${qty} unit ${item.name}?`,
+      `Pinjam ${qty} unit ${item.name}?\n\nPeminjaman akan diajukan dan menunggu persetujuan admin.`,
       [
         { text: 'Batal', style: 'cancel' },
         {
-          text: 'Ya, Pinjam',
-          onPress: () => {
-            Alert.alert('Berhasil!', 'Peminjaman berhasil diajukan. Silakan ambil barang di lokasi yang tertera.');
-            navigation.goBack();
+          text: 'Ya, Ajukan',
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              await borrowingService.createBorrowing({
+                itemId: item.id,
+                quantity: qty,
+                borrowDate: new Date().toISOString(),
+                returnDate: defaultReturnDate.toISOString(),
+                purpose: notes || undefined,
+              });
+
+              Alert.alert(
+                'Berhasil!',
+                'Peminjaman berhasil diajukan dengan status PENDING.\n\nSilakan menunggu persetujuan admin.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => navigation.goBack(),
+                  },
+                ]
+              );
+            } catch (err) {
+              Alert.alert('Error', handleApiError(err));
+            } finally {
+              setIsSubmitting(false);
+            }
           },
         },
       ]
@@ -53,12 +85,11 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
 
   const getConditionColor = () => {
     switch (item.condition) {
-      case 'EXCELLENT':
-      case 'GOOD':
+      case 'BAIK':
         return COLORS.success;
-      case 'FAIR':
+      case 'CUKUP':
         return COLORS.warning;
-      case 'POOR':
+      case 'RUSAK':
         return COLORS.error;
       default:
         return COLORS.gray;
@@ -67,14 +98,12 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
 
   const getConditionLabel = () => {
     switch (item.condition) {
-      case 'EXCELLENT':
-        return 'Sangat Baik';
-      case 'GOOD':
+      case 'BAIK':
         return 'Baik';
-      case 'FAIR':
+      case 'CUKUP':
         return 'Cukup';
-      case 'POOR':
-        return 'Buruk';
+      case 'RUSAK':
+        return 'Rusak';
       default:
         return item.condition;
     }
@@ -85,11 +114,7 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       <ScrollView>
         {/* Image Section */}
         <View style={styles.imageContainer}>
-          {item.imageUrl ? (
-            <Text style={styles.emoji}>📦</Text>
-          ) : (
-            <Text style={styles.emoji}>📦</Text>
-          )}
+          <Text style={styles.emoji}>{item.image || '📦'}</Text>
         </View>
 
         {/* Content */}
@@ -109,17 +134,17 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
             <Text style={styles.sectionTitle}>Ketersediaan</Text>
             <View style={styles.availabilityContainer}>
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.availableQuantity}</Text>
+                <Text style={styles.availabilityNumber}>{item.available}</Text>
                 <Text style={styles.availabilityLabel}>Tersedia</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.quantity - item.availableQuantity}</Text>
+                <Text style={styles.availabilityNumber}>{item.total - item.available}</Text>
                 <Text style={styles.availabilityLabel}>Dipinjam</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.quantity}</Text>
+                <Text style={styles.availabilityNumber}>{item.total}</Text>
                 <Text style={styles.availabilityLabel}>Total</Text>
               </View>
             </View>
@@ -132,24 +157,23 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
           </View>
 
           {/* Location */}
-          {item.location && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Lokasi</Text>
-              <View style={styles.locationCard}>
-                <Text style={styles.locationIcon}>📍</Text>
-                <Text style={styles.locationText}>{item.location}</Text>
-              </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Lokasi</Text>
+            <View style={styles.locationCard}>
+              <Text style={styles.locationIcon}>📍</Text>
+              <Text style={styles.locationText}>{item.location}</Text>
             </View>
-          )}
+          </View>
 
           {/* Quantity Input */}
-          {item.availableQuantity > 0 && item.status === 'AVAILABLE' && (
+          {item.available > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Jumlah Pinjam</Text>
               <View style={styles.quantityContainer}>
                 <TouchableOpacity
                   style={styles.quantityButton}
                   onPress={() => setQuantity(String(Math.max(1, parseInt(quantity) - 1)))}
+                  disabled={isSubmitting}
                 >
                   <Text style={styles.quantityButtonText}>−</Text>
                 </TouchableOpacity>
@@ -158,15 +182,34 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
                   value={quantity}
                   onChangeText={setQuantity}
                   keyboardType="numeric"
+                  editable={!isSubmitting}
                 />
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(Math.min(item.availableQuantity, parseInt(quantity) + 1)))}
+                  onPress={() => setQuantity(String(Math.min(item.available, parseInt(quantity) + 1)))}
+                  disabled={isSubmitting}
                 >
                   <Text style={styles.quantityButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.maxQuantity}>Maksimal: {item.availableQuantity} unit</Text>
+              <Text style={styles.maxQuantity}>Maksimal: {item.available} unit</Text>
+            </View>
+          )}
+
+          {/* Notes (optional) */}
+          {item.available > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Catatan (Opsional)</Text>
+              <TextInput
+                style={styles.notesInput}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Tambahkan catatan keperluan peminjaman..."
+                placeholderTextColor={COLORS.textSecondary}
+                multiline
+                numberOfLines={3}
+                editable={!isSubmitting}
+              />
             </View>
           )}
         </View>
@@ -175,13 +218,20 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       {/* Bottom Button */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.borrowButton, (item.availableQuantity === 0 || item.status !== 'AVAILABLE') && styles.borrowButtonDisabled]}
+          style={[
+            styles.borrowButton,
+            (item.available === 0 || isSubmitting) && styles.borrowButtonDisabled,
+          ]}
           onPress={handleBorrow}
-          disabled={item.availableQuantity === 0 || item.status !== 'AVAILABLE'}
+          disabled={item.available === 0 || isSubmitting}
         >
-          <Text style={styles.borrowButtonText}>
-            {(item.availableQuantity === 0 || item.status !== 'AVAILABLE') ? 'Tidak Tersedia' : 'Ajukan Peminjaman'}
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.borrowButtonText}>
+              {item.available === 0 ? 'Tidak Tersedia' : 'Ajukan Peminjaman'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -330,6 +380,17 @@ const styles = StyleSheet.create({
     marginTop: SIZES.sm,
     color: COLORS.textSecondary,
     fontSize: 14,
+  },
+  notesInput: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: SIZES.md,
+    fontSize: 16,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   bottomContainer: {
     padding: SIZES.md,

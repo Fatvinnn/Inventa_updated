@@ -24,6 +24,6 @@ export const createBorrowingValidator = [
 
 export const updateBorrowingStatusValidator = [
   body('status')
-    .isIn(['ACTIVE', 'RETURNED', 'OVERDUE'])
-    .withMessage('Status harus ACTIVE, RETURNED, atau OVERDUE'),
+    .isIn(['PENDING', 'APPROVED', 'REJECTED', 'RETURNED', 'OVERDUE'])
+    .withMessage('Status harus PENDING, APPROVED, REJECTED, RETURNED, atau OVERDUE'),
 ];

@@ -4,8 +4,8 @@ import { Item } from '../types';
 export interface ItemFilters {
   search?: string;
   category?: string;
-  condition?: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-  status?: 'AVAILABLE' | 'BORROWED' | 'MAINTENANCE' | 'RETIRED';
+  condition?: 'BAIK' | 'CUKUP' | 'RUSAK';
+  available?: boolean;
   page?: number;
   limit?: number;
 }
@@ -13,15 +13,15 @@ export interface ItemFilters {
 export interface CreateItemData {
   name: string;
   description?: string;
-  category: string;
-  quantity: number;
-  condition: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-  location?: string;
-  imageUrl?: string;
+  categoryId: string;
+  total: number;
+  condition: 'BAIK' | 'CUKUP' | 'RUSAK';
+  location: string;
+  image?: string;
 }
 
 export interface UpdateItemData extends Partial<CreateItemData> {
-  status?: 'AVAILABLE' | 'BORROWED' | 'MAINTENANCE' | 'RETIRED';
+  available?: number;
 }
 
 class ItemService {
@@ -31,7 +31,7 @@ class ItemService {
     if (filters?.search) params.append('search', filters.search);
     if (filters?.category) params.append('category', filters.category);
     if (filters?.condition) params.append('condition', filters.condition);
-    if (filters?.status) params.append('status', filters.status);
+    if (filters?.available !== undefined) params.append('available', filters.available.toString());
     if (filters?.page) params.append('page', filters.page.toString());
     if (filters?.limit) params.append('limit', filters.limit.toString());
 

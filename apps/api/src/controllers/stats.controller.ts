@@ -26,7 +26,7 @@ export const getUserDashboardStats = asyncHandler(async (req: AuthRequest, res: 
     }),
     Promise.all([
       prisma.borrowing.count({ where: { userId } }),
-      prisma.borrowing.count({ where: { userId, status: 'ACTIVE' } }),
+      prisma.borrowing.count({ where: { userId, status: 'APPROVED' } }),
       prisma.borrowing.count({ where: { userId, status: 'RETURNED' } }),
       prisma.borrowing.count({ where: { userId, status: 'OVERDUE' } }),
     ]),
@@ -61,7 +61,7 @@ export const getAdminDashboardStats = asyncHandler(async (req: AuthRequest, res:
       },
     }),
     Promise.all([
-      prisma.borrowing.count({ where: { status: 'ACTIVE' } }),
+      prisma.borrowing.count({ where: { status: 'APPROVED' } }),
       prisma.borrowing.count({ where: { status: 'OVERDUE' } }),
     ]),
   ]);
@@ -117,7 +117,7 @@ export const getRecentActivities = asyncHandler(async (req: AuthRequest, res: Re
     let type: 'BORROW' | 'RETURN' | 'APPROVE' | 'REJECT' = 'BORROW';
     let actionText = 'mengajukan peminjaman';
 
-    if (borrowing.status === 'ACTIVE') {
+    if (borrowing.status === 'APPROVED') {
       type = 'APPROVE';
       actionText = 'meminjam';
     } else if (borrowing.status === 'RETURNED') {
@@ -126,6 +126,9 @@ export const getRecentActivities = asyncHandler(async (req: AuthRequest, res: Re
     } else if (borrowing.status === 'OVERDUE') {
       type = 'BORROW';
       actionText = 'terlambat mengembalikan';
+    } else if (borrowing.status === 'REJECTED') {
+      type = 'REJECT';
+      actionText = 'ditolak peminjaman';
     }
 
     return {

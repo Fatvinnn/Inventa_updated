@@ -216,7 +216,7 @@ async function main() {
         quantity: 1,
         borrowDate: new Date('2024-10-28'),
         returnDate: new Date('2024-11-01'),
-        status: 'ACTIVE',
+        status: 'APPROVED',
       },
     });
 
