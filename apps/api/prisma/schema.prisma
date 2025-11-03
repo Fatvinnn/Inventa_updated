@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// USERS TABLE
+// ============================================
+model User {
+  id                String      @id @default(uuid())
+  name              String
+  nim               String      @unique
+  email             String      @unique
+  phone             String?
+  faculty           String?
+  program           String?
+  password          String
+  role              Role        @default(USER)
+  avatarUrl         String?     @map("avatar_url")
+  totalBorrowings   Int         @default(0) @map("total_borrowings")
+  activeBorrowings  Int         @default(0) @map("active_borrowings")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  borrowings        Borrowing[]
+  createdItems      Item[]      @relation("CreatedItems")
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// ============================================
+// ITEMS TABLE
+// ============================================
+model Item {
+  id          String      @id @default(uuid())
+  name        String
+  category    String
+  description String?
+  image       String?     // emoji or URL
+  available   Int
+  total       Int
+  condition   Condition   @default(BAIK)
+  location    String
+  createdById String?     @map("created_by_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy   User?       @relation("CreatedItems", fields: [createdById], references: [id], onDelete: SetNull)
+  borrowings  Borrowing[]
+
+  @@index([category])
+  @@index([available])
+  @@map("items")
+}
+
+enum Condition {
+  BAIK
+  CUKUP
+  RUSAK
+}
+
+// ============================================
+// BORROWINGS TABLE
+// ============================================
+model Borrowing {
+  id                String          @id @default(uuid())
+  userId            String          @map("user_id")
+  itemId            String          @map("item_id")
+  quantity          Int             @default(1)
+  borrowDate        DateTime        @default(now()) @map("borrow_date") @db.Date
+  returnDate        DateTime        @map("return_date") @db.Date
+  actualReturnDate  DateTime?       @map("actual_return_date") @db.Date
+  status            BorrowingStatus @default(ACTIVE)
+  notes             String?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item              Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([itemId])
+  @@index([status])
+  @@index([returnDate])
+  @@map("borrowings")
+}
+
+enum BorrowingStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+}
+
+// ============================================
+// CATEGORIES TABLE (Optional)
+// ============================================
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  icon      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("categories")
+}

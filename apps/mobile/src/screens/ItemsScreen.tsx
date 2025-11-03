@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, FlatList, Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ItemCard, SearchBar, CategoryFilter } from '../components';
-import { MOCK_ITEMS } from '../data/mockData';
 import { RootStackParamList, Item } from '../types';
 import { COLORS, SIZES, CATEGORIES } from '../constants/theme';
+import { itemService, handleApiError } from '../services';
 
 type ItemsScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -13,23 +13,71 @@ type ItemsScreenProps = {
 export const ItemsScreen: React.FC<ItemsScreenProps> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [items, setItems] = useState<Item[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredItems = useMemo(() => {
-    return MOCK_ITEMS.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'Semua' || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
+  useEffect(() => {
+    fetchItems();
   }, [searchQuery, selectedCategory]);
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🔍</Text>
-      <Text style={styles.emptyText}>Barang tidak ditemukan</Text>
-      <Text style={styles.emptySubtext}>Coba gunakan kata kunci lain</Text>
-    </View>
-  );
+  const fetchItems = async () => {
+    try {
+      setError(null);
+      const filters: any = {};
+      
+      if (searchQuery) {
+        filters.search = searchQuery;
+      }
+      
+      if (selectedCategory && selectedCategory !== 'Semua') {
+        filters.category = selectedCategory;
+      }
+
+      const response = await itemService.getItems(filters);
+      setItems(response.data);
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchItems();
+  };
+
+  const renderEmpty = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>⚠️</Text>
+          <Text style={styles.emptyText}>Gagal memuat data</Text>
+          <Text style={styles.emptySubtext}>{error}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🔍</Text>
+        <Text style={styles.emptyText}>Barang tidak ditemukan</Text>
+        <Text style={styles.emptySubtext}>Coba gunakan kata kunci lain</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -44,7 +92,7 @@ export const ItemsScreen: React.FC<ItemsScreenProps> = ({ navigation }) => {
         onSelectCategory={setSelectedCategory}
       />
       <FlatList
-        data={filteredItems}
+        data={items}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ItemCard
@@ -52,9 +100,12 @@ export const ItemsScreen: React.FC<ItemsScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('ItemDetail', { item })}
           />
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={items.length === 0 ? styles.emptyList : styles.list}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+        }
       />
     </View>
   );
@@ -69,11 +120,19 @@ const styles = StyleSheet.create({
     paddingTop: SIZES.sm,
     paddingBottom: SIZES.lg,
   },
+  emptyList: {
+    flexGrow: 1,
+  },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SIZES.xxl * 2,
+  },
+  loadingText: {
+    marginTop: SIZES.md,
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
   emptyIcon: {
     fontSize: 64,

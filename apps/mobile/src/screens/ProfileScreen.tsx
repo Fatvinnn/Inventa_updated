@@ -1,14 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRoute } from '@react-navigation/native';
-import { MOCK_ADMIN } from '../data/mockData';
 import { COLORS, SIZES } from '../constants/theme';
+import { useAuth } from '../contexts';
+import { statsService, handleApiError } from '../services';
 
 export const ProfileScreen: React.FC = () => {
   const route = useRoute();
   const { onLogout } = (route.params as any) || {};
+  const { user, logout } = useAuth();
+  const [userStats, setUserStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserStats();
+  }, []);
+
+  const fetchUserStats = async () => {
+    try {
+      const stats = await statsService.getUserStats();
+      setUserStats(stats);
+    } catch (error) {
+      console.error('Failed to fetch user stats:', handleApiError(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const menuItems = [
     { icon: 'person-outline', title: 'Edit Profil', subtitle: 'Ubah informasi profil' },
@@ -27,7 +46,8 @@ export const ProfileScreen: React.FC = () => {
         {
           text: 'Keluar',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await logout();
             if (onLogout) {
               onLogout();
             }
@@ -53,26 +73,32 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.onlineBadge} />
           </View>
-          <Text style={styles.name}>{MOCK_ADMIN.name}</Text>
-          <Text style={styles.email}>{MOCK_ADMIN.email}</Text>
+          <Text style={styles.name}>{user?.name || 'User'}</Text>
+          <Text style={styles.email}>{user?.email || ''}</Text>
         </LinearGradient>
 
         {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
-            <Text style={styles.statNumber}>{MOCK_ADMIN.totalBorrowings}</Text>
-            <Text style={styles.statLabel}>Total Pinjaman</Text>
+        {isLoading ? (
+          <View style={styles.statsContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
+        ) : (
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
+              <Text style={styles.statNumber}>{userStats?.totalBorrowings || 0}</Text>
+              <Text style={styles.statLabel}>Total Pinjaman</Text>
+            </View>
 
-          <View style={styles.divider} />
+            <View style={styles.divider} />
 
-          <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={24} color={COLORS.warning} />
-            <Text style={styles.statNumber}>{MOCK_ADMIN.activeBorrowings}</Text>
-            <Text style={styles.statLabel}>Sedang Dipinjam</Text>
+            <View style={styles.statCard}>
+              <Ionicons name="time-outline" size={24} color={COLORS.warning} />
+              <Text style={styles.statNumber}>{userStats?.activeBorrowings || 0}</Text>
+              <Text style={styles.statLabel}>Sedang Dipinjam</Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Menu Items */}
         <View style={styles.menuSection}>

@@ -10,7 +10,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo build",
+    "build": "tsc --noEmit",
+    "build:expo": "expo build",
     "lint": "eslint .",
     "clean": "rm -rf .expo node_modules .turbo"
   },

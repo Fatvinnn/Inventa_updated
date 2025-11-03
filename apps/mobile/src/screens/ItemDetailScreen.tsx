@@ -19,7 +19,7 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
   const [quantity, setQuantity] = useState('1');
 
   const handleBorrow = () => {
-    if (item.available === 0) {
+    if (item.availableQuantity === 0 || item.status !== 'AVAILABLE') {
       Alert.alert('Tidak Tersedia', 'Maaf, barang ini sedang tidak tersedia.');
       return;
     }
@@ -30,8 +30,8 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       return;
     }
 
-    if (qty > item.available) {
-      Alert.alert('Invalid', `Hanya tersedia ${item.available} unit`);
+    if (qty > item.availableQuantity) {
+      Alert.alert('Invalid', `Hanya tersedia ${item.availableQuantity} unit`);
       return;
     }
 
@@ -53,14 +53,30 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
 
   const getConditionColor = () => {
     switch (item.condition) {
-      case 'Baik':
+      case 'EXCELLENT':
+      case 'GOOD':
         return COLORS.success;
-      case 'Cukup':
+      case 'FAIR':
         return COLORS.warning;
-      case 'Rusak':
-        return COLORS.danger;
+      case 'POOR':
+        return COLORS.error;
       default:
         return COLORS.gray;
+    }
+  };
+
+  const getConditionLabel = () => {
+    switch (item.condition) {
+      case 'EXCELLENT':
+        return 'Sangat Baik';
+      case 'GOOD':
+        return 'Baik';
+      case 'FAIR':
+        return 'Cukup';
+      case 'POOR':
+        return 'Buruk';
+      default:
+        return item.condition;
     }
   };
 
@@ -69,7 +85,11 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       <ScrollView>
         {/* Image Section */}
         <View style={styles.imageContainer}>
-          <Text style={styles.emoji}>{item.image}</Text>
+          {item.imageUrl ? (
+            <Text style={styles.emoji}>📦</Text>
+          ) : (
+            <Text style={styles.emoji}>📦</Text>
+          )}
         </View>
 
         {/* Content */}
@@ -80,7 +100,7 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
               <Text style={styles.category}>{item.category}</Text>
             </View>
             <View style={[styles.conditionBadge, { backgroundColor: getConditionColor() }]}>
-              <Text style={styles.conditionText}>{item.condition}</Text>
+              <Text style={styles.conditionText}>{getConditionLabel()}</Text>
             </View>
           </View>
 
@@ -89,17 +109,17 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
             <Text style={styles.sectionTitle}>Ketersediaan</Text>
             <View style={styles.availabilityContainer}>
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.available}</Text>
+                <Text style={styles.availabilityNumber}>{item.availableQuantity}</Text>
                 <Text style={styles.availabilityLabel}>Tersedia</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.total - item.available}</Text>
+                <Text style={styles.availabilityNumber}>{item.quantity - item.availableQuantity}</Text>
                 <Text style={styles.availabilityLabel}>Dipinjam</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.availabilityItem}>
-                <Text style={styles.availabilityNumber}>{item.total}</Text>
+                <Text style={styles.availabilityNumber}>{item.quantity}</Text>
                 <Text style={styles.availabilityLabel}>Total</Text>
               </View>
             </View>
@@ -108,20 +128,22 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
           {/* Description */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Deskripsi</Text>
-            <Text style={styles.description}>{item.description}</Text>
+            <Text style={styles.description}>{item.description || 'Tidak ada deskripsi'}</Text>
           </View>
 
           {/* Location */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Lokasi</Text>
-            <View style={styles.locationCard}>
-              <Text style={styles.locationIcon}>📍</Text>
-              <Text style={styles.locationText}>{item.location}</Text>
+          {item.location && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Lokasi</Text>
+              <View style={styles.locationCard}>
+                <Text style={styles.locationIcon}>📍</Text>
+                <Text style={styles.locationText}>{item.location}</Text>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Quantity Input */}
-          {item.available > 0 && (
+          {item.availableQuantity > 0 && item.status === 'AVAILABLE' && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Jumlah Pinjam</Text>
               <View style={styles.quantityContainer}>
@@ -139,12 +161,12 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
                 />
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(String(Math.min(item.available, parseInt(quantity) + 1)))}
+                  onPress={() => setQuantity(String(Math.min(item.availableQuantity, parseInt(quantity) + 1)))}
                 >
                   <Text style={styles.quantityButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.maxQuantity}>Maksimal: {item.available} unit</Text>
+              <Text style={styles.maxQuantity}>Maksimal: {item.availableQuantity} unit</Text>
             </View>
           )}
         </View>
@@ -153,12 +175,12 @@ export const ItemDetailScreen: React.FC<ItemDetailScreenProps> = ({ route, navig
       {/* Bottom Button */}
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={[styles.borrowButton, item.available === 0 && styles.borrowButtonDisabled]}
+          style={[styles.borrowButton, (item.availableQuantity === 0 || item.status !== 'AVAILABLE') && styles.borrowButtonDisabled]}
           onPress={handleBorrow}
-          disabled={item.available === 0}
+          disabled={item.availableQuantity === 0 || item.status !== 'AVAILABLE'}
         >
           <Text style={styles.borrowButtonText}>
-            {item.available === 0 ? 'Tidak Tersedia' : 'Ajukan Peminjaman'}
+            {(item.availableQuantity === 0 || item.status !== 'AVAILABLE') ? 'Tidak Tersedia' : 'Ajukan Peminjaman'}
           </Text>
         </TouchableOpacity>
       </View>

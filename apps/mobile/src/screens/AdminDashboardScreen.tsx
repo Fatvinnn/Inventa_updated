@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_ITEMS, MOCK_BORROWINGS } from '../data/mockData';
+import { statsService, Activity } from '../services';
 import { RootStackParamList } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
 
@@ -11,14 +11,60 @@ type AdminDashboardProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 };
 
+interface AdminStats {
+  totalItems: number;
+  totalStock: number;
+  availableStock: number;
+  borrowedStock: number;
+  activeBorrowings: number;
+  overdueBorrowings: number;
+}
+
 export const AdminDashboardScreen: React.FC<AdminDashboardProps> = ({ navigation }) => {
-  const stats = {
-    totalItems: MOCK_ITEMS.length,
-    totalStock: MOCK_ITEMS.reduce((sum, item) => sum + item.total, 0),
-    availableStock: MOCK_ITEMS.reduce((sum, item) => sum + item.available, 0),
-    borrowedStock: MOCK_ITEMS.reduce((sum, item) => sum + (item.total - item.available), 0),
-    activeBorrowings: MOCK_BORROWINGS.filter(b => b.status === 'active').length,
-    overdueBorrowings: MOCK_BORROWINGS.filter(b => b.status === 'overdue').length,
+  const [stats, setStats] = useState<AdminStats>({
+    totalItems: 0,
+    totalStock: 0,
+    availableStock: 0,
+    borrowedStock: 0,
+    activeBorrowings: 0,
+    overdueBorrowings: 0,
+  });
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsData, activitiesData] = await Promise.all([
+        statsService.getStats(),
+        statsService.getActivities(10),
+      ]);
+
+      setStats({
+        totalItems: statsData.totalItems,
+        totalStock: statsData.totalItems,
+        availableStock: statsData.availableItems,
+        borrowedStock: statsData.borrowedItems,
+        activeBorrowings: statsData.activeBorrowings,
+        overdueBorrowings: statsData.overdueItems || 0,
+      });
+
+      setActivities(activitiesData);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Gagal memuat data dashboard');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchDashboardData();
   };
 
   const quickActions = [
@@ -47,7 +93,17 @@ export const AdminDashboardScreen: React.FC<AdminDashboardProps> = ({ navigation
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+          }
+        >
         {/* Hero Section */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.primaryDark]}
@@ -155,28 +211,31 @@ export const AdminDashboardScreen: React.FC<AdminDashboardProps> = ({ navigation
             <Text style={styles.sectionTitle}>Aktivitas Terbaru</Text>
           </View>
           <View style={styles.activitiesContainer}>
-            {MOCK_BORROWINGS.slice(0, 3).map((borrowing) => (
-              <View key={borrowing.id} style={styles.activityCard}>
-                <View style={[
-                  styles.activityDot, 
-                  { backgroundColor: borrowing.status === 'active' ? COLORS.primary : 
-                                    borrowing.status === 'overdue' ? COLORS.error : COLORS.success }
-                ]} />
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>{borrowing.itemName}</Text>
-                  <Text style={styles.activitySubtitle}>
-                    {borrowing.status === 'active' ? 'Sedang dipinjam' : 
-                     borrowing.status === 'overdue' ? 'Terlambat' : 'Dikembalikan'}
+            {activities.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>Belum ada aktivitas terbaru</Text>
+              </View>
+            ) : (
+              activities.slice(0, 5).map((activity) => (
+                <View key={activity.id} style={styles.activityCard}>
+                  <View style={[
+                    styles.activityDot, 
+                    { backgroundColor: COLORS.primary }
+                  ]} />
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{activity.itemName || activity.userName}</Text>
+                    <Text style={styles.activitySubtitle}>{activity.description}</Text>
+                  </View>
+                  <Text style={styles.activityDate}>
+                    {new Date(activity.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                   </Text>
                 </View>
-                <Text style={styles.activityDate}>
-                  {new Date(borrowing.borrowDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                </Text>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
+      )}
     </View>
   );
 };
@@ -351,6 +410,20 @@ const styles = StyleSheet.create({
   },
   activityDate: {
     fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.lg,
+  },
+  emptyText: {
+    fontSize: 14,
     color: COLORS.textSecondary,
   },
 });

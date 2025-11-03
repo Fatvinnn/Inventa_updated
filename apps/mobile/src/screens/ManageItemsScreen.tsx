@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ItemCard, SearchBar, CategoryFilter } from '../components';
-import { MOCK_ITEMS } from '../data/mockData';
+import { itemService } from '../services';
 import { CATEGORIES, COLORS, SIZES } from '../constants/theme';
 import { Item } from '../types';
 import { useNavigation } from '@react-navigation/native';
@@ -19,8 +19,36 @@ export const ManageItemsScreen: React.FC = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [editedTotal, setEditedTotal] = useState('');
+  const [items, setItems] = useState<Item[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredItems = MOCK_ITEMS.filter(item => {
+  const fetchItems = async () => {
+    try {
+      const filters = {
+        search: searchQuery || undefined,
+        category: selectedCategory !== 'Semua' ? selectedCategory : undefined,
+      };
+      const response = await itemService.getItems(filters);
+      setItems(response.data);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Gagal memuat data barang');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, [searchQuery, selectedCategory]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchItems();
+  };
+
+  const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.category.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'Semua' || item.category === selectedCategory;
@@ -29,7 +57,7 @@ export const ManageItemsScreen: React.FC = () => {
 
   const handleEditItem = (item: Item) => {
     setSelectedItem(item);
-    setEditedTotal(item.total.toString());
+    setEditedTotal(item.quantity.toString());
     setEditModalVisible(true);
   };
 
@@ -38,7 +66,7 @@ export const ManageItemsScreen: React.FC = () => {
     setDeleteModalVisible(true);
   };
 
-  const confirmEdit = () => {
+  const confirmEdit = async () => {
     if (!selectedItem) return;
     
     const newTotal = parseInt(editedTotal);
@@ -47,19 +75,29 @@ export const ManageItemsScreen: React.FC = () => {
       return;
     }
 
-    // TODO: Update item in database
-    Alert.alert('Berhasil', `Total unit ${selectedItem.name} berhasil diubah menjadi ${newTotal}`);
-    setEditModalVisible(false);
-    setSelectedItem(null);
+    try {
+      await itemService.updateItem(selectedItem.id, { quantity: newTotal });
+      Alert.alert('Berhasil', `Total unit ${selectedItem.name} berhasil diubah menjadi ${newTotal}`);
+      setEditModalVisible(false);
+      setSelectedItem(null);
+      fetchItems(); // Refresh list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Gagal mengupdate barang');
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!selectedItem) return;
     
-    // TODO: Delete item from database
-    Alert.alert('Berhasil', `${selectedItem.name} berhasil dihapus`);
-    setDeleteModalVisible(false);
-    setSelectedItem(null);
+    try {
+      await itemService.deleteItem(selectedItem.id);
+      Alert.alert('Berhasil', `${selectedItem.name} berhasil dihapus`);
+      setDeleteModalVisible(false);
+      setSelectedItem(null);
+      fetchItems(); // Refresh list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Gagal menghapus barang');
+    }
   };
 
   const renderItem = ({ item }: { item: Item }) => (
@@ -121,13 +159,28 @@ export const ManageItemsScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredItems}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredItems}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="cube-outline" size={64} color={COLORS.gray} />
+              <Text style={styles.emptyText}>Tidak ada barang ditemukan</Text>
+            </View>
+          }
+        />
+      )}
 
       {/* Edit Modal */}
       <Modal
@@ -162,7 +215,7 @@ export const ManageItemsScreen: React.FC = () => {
                   placeholderTextColor={COLORS.textSecondary}
                 />
                 <Text style={styles.helperText}>
-                  Unit tersedia saat ini: {selectedItem?.available}
+                  Unit tersedia saat ini: {selectedItem?.availableQuantity}
                 </Text>
               </View>
             </View>
@@ -420,5 +473,21 @@ const styles = StyleSheet.create({
   },
   deleteConfirmButton: {
     backgroundColor: COLORS.error,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: SIZES.xxl,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.xxl * 2,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
   },
 });

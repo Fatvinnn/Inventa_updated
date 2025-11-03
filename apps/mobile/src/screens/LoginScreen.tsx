@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/theme';
+import { useAuth } from '../contexts';
 
 interface LoginScreenProps {
-  onLogin: (email: string, password: string) => void;
   onNavigateToRegister?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onNavigateToRegister }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }) => {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,15 +18,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onNavigateToR
 
   const handleLogin = async () => {
     if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
       return;
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await login({ email, password });
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Invalid credentials');
+    } finally {
       setIsLoading(false);
-      onLogin(email, password);
-    }, 1000);
+    }
   };
 
   return (

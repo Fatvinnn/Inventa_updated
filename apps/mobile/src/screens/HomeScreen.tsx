@@ -1,28 +1,80 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ItemCard } from '../components';
-import { MOCK_ITEMS } from '../data/mockData';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, Item } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
+import { itemService, statsService, handleApiError } from '../services';
+import type { Stats } from '../services';
 
 type HomeScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 };
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const popularItems = MOCK_ITEMS.slice(0, 4);
-  const stats = {
-    totalItems: MOCK_ITEMS.length,
-    available: MOCK_ITEMS.filter(item => item.available > 0).length,
-    borrowed: MOCK_ITEMS.reduce((sum, item) => sum + (item.total - item.available), 0),
+  const [popularItems, setPopularItems] = useState<Item[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setError(null);
+      const [statsData, popularItemsData] = await Promise.all([
+        statsService.getStats(),
+        itemService.getPopularItems(4),
+      ]);
+      setStats(statsData);
+      setPopularItems(popularItemsData);
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchData();
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error && !stats) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+        }
+      >
         {/* Hero Section with Gradient */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.primaryDark]}
@@ -42,7 +94,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View style={[styles.statIconContainer, { backgroundColor: '#EEF2FF' }]}>
               <Ionicons name="cube-outline" size={24} color={COLORS.primary} />
             </View>
-            <Text style={styles.statNumber}>{stats.totalItems}</Text>
+            <Text style={styles.statNumber}>{stats?.totalItems || 0}</Text>
             <Text style={styles.statLabel}>Total Barang</Text>
           </View>
 
@@ -50,7 +102,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View style={[styles.statIconContainer, { backgroundColor: '#DCFCE7' }]}>
               <Ionicons name="checkmark-circle-outline" size={24} color={COLORS.success} />
             </View>
-            <Text style={styles.statNumber}>{stats.available}</Text>
+            <Text style={styles.statNumber}>{stats?.availableItems || 0}</Text>
             <Text style={styles.statLabel}>Tersedia</Text>
           </View>
 
@@ -58,7 +110,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
               <Ionicons name="time-outline" size={24} color={COLORS.warning} />
             </View>
-            <Text style={styles.statNumber}>{stats.borrowed}</Text>
+            <Text style={styles.statNumber}>{stats?.activeBorrowings || 0}</Text>
             <Text style={styles.statLabel}>Dipinjam</Text>
           </View>
         </View>
@@ -111,13 +163,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <Text style={styles.seeAllText}>Lihat Semua</Text>
             </TouchableOpacity>
           </View>
-          {popularItems.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onPress={() => navigation.navigate('ItemDetail', { item })}
-            />
-          ))}
+          {popularItems.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cube-outline" size={48} color={COLORS.textSecondary} />
+              <Text style={styles.emptyText}>Belum ada barang</Text>
+            </View>
+          ) : (
+            popularItems.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                onPress={() => navigation.navigate('ItemDetail', { item })}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -233,5 +292,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: SIZES.md,
+    fontSize: 16,
+    color: COLORS.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: SIZES.lg,
+  },
+  errorText: {
+    marginTop: SIZES.md,
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: SIZES.lg,
+    paddingVertical: SIZES.md,
+    paddingHorizontal: SIZES.xl,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: SIZES.xl,
+    paddingHorizontal: SIZES.md,
+  },
+  emptyText: {
+    marginTop: SIZES.md,
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
 });

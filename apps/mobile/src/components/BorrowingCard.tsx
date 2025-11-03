@@ -8,27 +8,41 @@ interface BorrowingCardProps {
   borrowing: Borrowing;
 }
 
-const getStatusInfo = (status: string) => {
+const getStatusInfo = (status: Borrowing['status']) => {
   switch (status) {
-    case 'active':
+    case 'APPROVED':
       return {
         label: 'Sedang Dipinjam',
         color: COLORS.primary,
         icon: 'time-outline' as keyof typeof Ionicons.glyphMap,
         bgColor: '#EEF2FF', // Indigo 50
       };
-    case 'returned':
+    case 'RETURNED':
       return {
         label: 'Dikembalikan',
         color: COLORS.success,
         icon: 'checkmark-circle-outline' as keyof typeof Ionicons.glyphMap,
         bgColor: '#DCFCE7', // Green 100
       };
-    case 'overdue':
+    case 'OVERDUE':
       return {
         label: 'Terlambat',
         color: COLORS.error,
         icon: 'alert-circle-outline' as keyof typeof Ionicons.glyphMap,
+        bgColor: '#FEE2E2', // Red 100
+      };
+    case 'PENDING':
+      return {
+        label: 'Menunggu Persetujuan',
+        color: COLORS.warning,
+        icon: 'hourglass-outline' as keyof typeof Ionicons.glyphMap,
+        bgColor: '#FEF3C7', // Yellow 100
+      };
+    case 'REJECTED':
+      return {
+        label: 'Ditolak',
+        color: COLORS.error,
+        icon: 'close-circle-outline' as keyof typeof Ionicons.glyphMap,
         bgColor: '#FEE2E2', // Red 100
       };
     default:
@@ -43,6 +57,7 @@ const getStatusInfo = (status: string) => {
 
 export const BorrowingCard: React.FC<BorrowingCardProps> = ({ borrowing }) => {
   const statusInfo = getStatusInfo(borrowing.status);
+  const itemName = borrowing.item?.name || 'Item';
 
   return (
     <View style={styles.card}>
@@ -50,7 +65,7 @@ export const BorrowingCard: React.FC<BorrowingCardProps> = ({ borrowing }) => {
       
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.itemName}>{borrowing.itemName}</Text>
+          <Text style={styles.itemName}>{itemName}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}>
             <Ionicons name={statusInfo.icon} size={14} color={statusInfo.color} />
             <Text style={[styles.statusText, { color: statusInfo.color }]}>

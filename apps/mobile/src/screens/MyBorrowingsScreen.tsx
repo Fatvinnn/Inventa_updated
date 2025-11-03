@@ -1,27 +1,77 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, Text, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { BorrowingCard } from '../components';
-import { MOCK_BORROWINGS } from '../data/mockData';
 import { Borrowing } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
+import { borrowingService, handleApiError } from '../services';
+
+type FilterType = 'all' | 'APPROVED' | 'RETURNED';
 
 export const MyBorrowingsScreen: React.FC = () => {
-  const [filter, setFilter] = useState<'all' | 'active' | 'returned'>('all');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [borrowings, setBorrowings] = useState<Borrowing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredBorrowings = MOCK_BORROWINGS.filter((borrowing) => {
-    if (filter === 'all') return true;
-    return borrowing.status === filter;
-  });
+  useEffect(() => {
+    fetchBorrowings();
+  }, [filter]);
 
-  const activeBorrowings = MOCK_BORROWINGS.filter(b => b.status === 'active').length;
+  const fetchBorrowings = async () => {
+    try {
+      setError(null);
+      const filters: any = {};
+      
+      if (filter !== 'all') {
+        filters.status = filter;
+      }
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📋</Text>
-      <Text style={styles.emptyText}>Belum ada peminjaman</Text>
-      <Text style={styles.emptySubtext}>Pinjam barang untuk memulai</Text>
-    </View>
-  );
+      const response = await borrowingService.getMyBorrowings(filters);
+      setBorrowings(response.data);
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchBorrowings();
+  };
+
+  const activeBorrowings = borrowings.filter(b => b.status === 'APPROVED').length;
+
+  const renderEmpty = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>⚠️</Text>
+          <Text style={styles.emptyText}>Gagal memuat data</Text>
+          <Text style={styles.emptySubtext}>{error}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>📋</Text>
+        <Text style={styles.emptyText}>Belum ada peminjaman</Text>
+        <Text style={styles.emptySubtext}>Pinjam barang untuk memulai</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -32,7 +82,7 @@ export const MyBorrowingsScreen: React.FC = () => {
           <Text style={styles.statLabel}>Sedang Dipinjam</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{MOCK_BORROWINGS.length}</Text>
+          <Text style={styles.statNumber}>{borrowings.length}</Text>
           <Text style={styles.statLabel}>Total Peminjaman</Text>
         </View>
       </View>
@@ -48,18 +98,18 @@ export const MyBorrowingsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'active' && styles.filterButtonActive]}
-          onPress={() => setFilter('active')}
+          style={[styles.filterButton, filter === 'APPROVED' && styles.filterButtonActive]}
+          onPress={() => setFilter('APPROVED')}
         >
-          <Text style={[styles.filterText, filter === 'active' && styles.filterTextActive]}>
+          <Text style={[styles.filterText, filter === 'APPROVED' && styles.filterTextActive]}>
             Aktif
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'returned' && styles.filterButtonActive]}
-          onPress={() => setFilter('returned')}
+          style={[styles.filterButton, filter === 'RETURNED' && styles.filterButtonActive]}
+          onPress={() => setFilter('RETURNED')}
         >
-          <Text style={[styles.filterText, filter === 'returned' && styles.filterTextActive]}>
+          <Text style={[styles.filterText, filter === 'RETURNED' && styles.filterTextActive]}>
             Selesai
           </Text>
         </TouchableOpacity>
@@ -67,12 +117,15 @@ export const MyBorrowingsScreen: React.FC = () => {
 
       {/* List */}
       <FlatList
-        data={filteredBorrowings}
+        data={borrowings}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <BorrowingCard borrowing={item} />}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={borrowings.length === 0 ? styles.emptyList : styles.list}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+        }
       />
     </View>
   );
@@ -136,6 +189,14 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: SIZES.lg,
+  },
+  emptyList: {
+    flexGrow: 1,
+  },
+  loadingText: {
+    marginTop: SIZES.md,
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
   emptyContainer: {
     alignItems: 'center',

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/theme';
+import { useAuth } from '../contexts';
 
 interface RegisterScreenProps {
-  onRegister: (userData: RegisterData) => void;
   onBackToLogin: () => void;
 }
 
-export interface RegisterData {
+interface RegisterFormData {
   name: string;
   nim: string;
   email: string;
@@ -19,8 +19,9 @@ export interface RegisterData {
   password: string;
 }
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBackToLogin }) => {
-  const [formData, setFormData] = useState<RegisterData>({
+export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin }) => {
+  const { register } = useAuth();
+  const [formData, setFormData] = useState<RegisterFormData>({
     name: '',
     nim: '',
     email: '',
@@ -33,18 +34,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<RegisterData>>({});
+  const [errors, setErrors] = useState<Partial<RegisterFormData>>({});
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<RegisterData> = {};
+    const newErrors: Partial<RegisterFormData> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Nama wajib diisi';
     if (!formData.nim.trim()) newErrors.nim = 'NIM wajib diisi';
+    else if (formData.nim.length < 5) newErrors.nim = 'NIM minimal 5 karakter';
     if (!formData.email.trim()) newErrors.email = 'Email wajib diisi';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email tidak valid';
-    if (!formData.phone.trim()) newErrors.phone = 'No. HP wajib diisi';
-    if (!formData.faculty.trim()) newErrors.faculty = 'Fakultas wajib diisi';
-    if (!formData.program.trim()) newErrors.program = 'Program Studi wajib diisi';
+    // phone, faculty, program are optional - no validation needed
     if (!formData.password) newErrors.password = 'Password wajib diisi';
     else if (formData.password.length < 6) newErrors.password = 'Password minimal 6 karakter';
     if (formData.password !== confirmPassword) {
@@ -59,14 +59,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
     if (!validateForm()) return;
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await register(formData);
+      Alert.alert('Registrasi Berhasil!', `Selamat datang, ${formData.name}!`);
+    } catch (error: any) {
+      Alert.alert('Registrasi Gagal', error.message || 'Terjadi kesalahan');
+    } finally {
       setIsLoading(false);
-      onRegister(formData);
-    }, 1000);
+    }
   };
 
-  const updateField = (field: keyof RegisterData, value: string) => {
+  const updateField = (field: keyof RegisterFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user types
     if (errors[field]) {
@@ -130,11 +133,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
               <Ionicons name="card-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Masukkan NIM"
+                placeholder="Masukkan NIM (min 5 karakter)"
                 placeholderTextColor={COLORS.textSecondary}
                 value={formData.nim}
                 onChangeText={(text) => updateField('nim', text)}
-                keyboardType="numeric"
+                keyboardType="default"
               />
             </View>
             {errors.nim && <Text style={styles.errorText}>{errors.nim}</Text>}
@@ -161,8 +164,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
 
           {/* Phone Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>No. Handphone</Text>
-            <View style={[styles.inputContainer, errors.phone && styles.inputError]}>
+            <Text style={styles.label}>No. Handphone (Opsional)</Text>
+            <View style={styles.inputContainer}>
               <Ionicons name="call-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
@@ -173,31 +176,29 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
                 keyboardType="phone-pad"
               />
             </View>
-            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
           </View>
 
           {/* Faculty Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Fakultas</Text>
-            <View style={[styles.inputContainer, errors.faculty && styles.inputError]}>
-              <Ionicons name="school-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+            <Text style={styles.label}>Fakultas (Opsional)</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="business-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Contoh: Fakultas Teknik"
+                placeholder="Contoh: Teknik"
                 placeholderTextColor={COLORS.textSecondary}
                 value={formData.faculty}
                 onChangeText={(text) => updateField('faculty', text)}
                 autoCapitalize="words"
               />
             </View>
-            {errors.faculty && <Text style={styles.errorText}>{errors.faculty}</Text>}
           </View>
 
           {/* Program Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Program Studi</Text>
-            <View style={[styles.inputContainer, errors.program && styles.inputError]}>
-              <Ionicons name="book-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+            <Text style={styles.label}>Program Studi (Opsional)</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="school-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Contoh: Teknik Informatika"
@@ -207,7 +208,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onRegister, onBa
                 autoCapitalize="words"
               />
             </View>
-            {errors.program && <Text style={styles.errorText}>{errors.program}</Text>}
           </View>
 
           {/* Password Input */}
